@@ -1,0 +1,21 @@
+# Mission set shared by all three executives.
+# priority: higher = first.  deadline (optional): seconds since epoch-0 of run.
+missions:
+  - name: patrol_perimeter
+    type: patrol
+    priority: 3
+    loops: 1
+    waypoints:
+      - [4.0, -3.0]
+      - [-4.0, -3.0]
+      - [-4.0, 1.5]
+  - name: inspect_east_room
+    type: inspect
+    priority: 2
+    target: [4.5, 3.0]
+    duration: 3.0
+  - name: deliver_package
+    type: deliver
+    priority: 1
+    pickup: [-4.0, -3.0]
+    dropoff: [4.0, -3.0]

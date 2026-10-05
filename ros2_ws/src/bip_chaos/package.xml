@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>bip_chaos</name>
+  <version>1.0.0</version>
+  <description>Fault injection for executive-layer benchmarking</description>
+  <maintainer email="harshasekar.09@gmail.com">Harshavardhan Coimbatore Sekar</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>bip_interfaces</depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="bip_world">
+    <include><uri>model://ground_plane</uri></include>
+    <include><uri>model://sun</uri></include>
+
+    <!-- IMPORTANT: these walls must stay in sync with
+         bip_navigation/config/environment.yaml -->
+
+    <model name="wall_top"><static>true</static>
+      <pose>0 4 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>12.4 0.2 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>12.4 0.2 1.0</size></box></geometry>
+      <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material></visual></link>
+    </model>
+
+    <model name="wall_bottom"><static>true</static>
+      <pose>0 -4 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>12.4 0.2 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>12.4 0.2 1.0</size></box></geometry>
+      <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material></visual></link>
+    </model>
+
+    <model name="wall_left"><static>true</static>
+      <pose>-6 0 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 8.4 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.2 8.4 1.0</size></box></geometry>
+      <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material></visual></link>
+    </model>
+
+    <model name="wall_right"><static>true</static>
+      <pose>6 0 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 8.4 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.2 8.4 1.0</size></box></geometry>
+      <material><ambient>0.6 0.6 0.6 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material></visual></link>
+    </model>
+
+    <model name="wall_inner_a"><static>true</static>
+      <pose>0 -2.5 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 3.0 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.2 3.0 1.0</size></box></geometry>
+      <material><ambient>0.8 0.4 0.2 1</ambient><diffuse>0.8 0.4 0.2 1</diffuse></material></visual></link>
+    </model>
+
+    <model name="wall_inner_b"><static>true</static>
+      <pose>2.5 2.0 0.5 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 4.0 1.0</size></box></geometry></collision>
+      <visual name="v"><geometry><box><size>0.2 4.0 1.0</size></box></geometry>
+      <material><ambient>0.8 0.4 0.2 1</ambient><diffuse>0.8 0.4 0.2 1</diffuse></material></visual></link>
+    </model>
+
+    <!-- charging dock marker (visual only, no collision) -->
+    <model name="dock"><static>true</static>
+      <pose>-5.2 3.2 0.01 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.8 0.8 0.02</size></box></geometry>
+      <material><ambient>0.1 0.8 0.2 1</ambient><diffuse>0.1 0.8 0.2 1</diffuse></material></visual></link>
+    </model>
+
+    <physics type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+    </physics>
+  </world>
+</sdf>

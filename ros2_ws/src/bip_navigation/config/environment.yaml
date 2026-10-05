@@ -1,0 +1,13 @@
+# Single source of truth for the planner map.
+# MUST match bip_description/worlds/bip_world.world.
+bounds: {x_min: -6.0, x_max: 6.0, y_min: -4.0, y_max: 4.0}
+resolution: 0.1
+robot_radius: 0.30
+obstacles:
+  - {x:  0.0, y:  4.0, size_x: 12.4, size_y: 0.2}   # wall_top
+  - {x:  0.0, y: -4.0, size_x: 12.4, size_y: 0.2}   # wall_bottom
+  - {x: -6.0, y:  0.0, size_x: 0.2,  size_y: 8.4}   # wall_left
+  - {x:  6.0, y:  0.0, size_x: 0.2,  size_y: 8.4}   # wall_right
+  - {x:  0.0, y: -2.5, size_x: 0.2,  size_y: 3.0}   # wall_inner_a
+  - {x:  2.5, y:  2.0, size_x: 0.2,  size_y: 4.0}   # wall_inner_b
+dock: {x: -5.2, y: 3.2, radius: 0.6}

@@ -1,0 +1,7 @@
+# Axis-aligned virtual obstacle (meters, world frame)
+float32 x
+float32 y
+float32 size_x
+float32 size_y
+---
+bool success

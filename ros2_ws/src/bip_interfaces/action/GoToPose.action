@@ -1,0 +1,12 @@
+# Goal
+float32 x
+float32 y
+float32 yaw
+---
+# Result
+bool success
+string message
+float32 total_time
+---
+# Feedback
+float32 distance_remaining

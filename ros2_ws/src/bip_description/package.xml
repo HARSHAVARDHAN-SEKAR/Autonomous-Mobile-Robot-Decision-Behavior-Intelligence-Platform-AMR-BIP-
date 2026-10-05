@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>bip_description</name>
+  <version>1.0.0</version>
+  <description>Robot URDF, Gazebo world and simulation bringup</description>
+  <maintainer email="harshasekar.09@gmail.com">Harshavardhan Coimbatore Sekar</maintainer>
+  <license>MIT</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>gazebo_ros_pkgs</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

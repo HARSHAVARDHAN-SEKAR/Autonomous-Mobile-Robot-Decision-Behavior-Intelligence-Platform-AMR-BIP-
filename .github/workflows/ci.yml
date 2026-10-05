@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install core test dependencies
+        run: pip install numpy pyyaml pytest
+
+      - name: Python syntax
+        run: python -m compileall -q ros2_ws/src
+
+      - name: Package XML sanity
+        run: |
+          python - << 'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for path in Path('ros2_ws/src').glob('*/package.xml'):
+              ET.parse(path)
+          print('package.xml files parse correctly')
+          PY
+
+      - name: Repository metadata sanity
+        run: |
+          ! grep -RIn --exclude-dir=.git -E 'dev@exa[m]ple\.com' .
+
+      - name: Unit tests (ROS-free core)
+        run: pytest ros2_ws/src/bip_core/test -q
+
+      - name: Static map/mission consistency
+        run: |
+          python - << 'PY'
+          import itertools
+          import sys
+          import yaml
+
+          sys.path.insert(0, 'ros2_ws/src/bip_core')
+          from bip_core.grid import grid_from_config
+          from bip_core import astar
+
+          with open('ros2_ws/src/bip_navigation/config/environment.yaml') as f:
+              env = yaml.safe_load(f)
+          g = grid_from_config(env)
+          occ = g.inflated(env['robot_radius'])
+
+          with open('ros2_ws/src/bip_executive/config/missions.yaml') as f:
+              missions = yaml.safe_load(f)['missions']
+
+          points = [(-4.0, 3.0), (env['dock']['x'], env['dock']['y'])]
+          for mission in missions:
+              points += [tuple(w) for w in mission.get('waypoints', [])]
+              for key in ('target', 'pickup', 'dropoff'):
+                  if key in mission:
+                      points.append(tuple(mission[key]))
+
+          for start, goal in itertools.combinations(points, 2):
+              assert astar.plan(
+                  occ,
+                  g.world_to_cell(*start),
+                  g.world_to_cell(*goal),
+              ), (start, goal)
+          print('all configured mission points are mutually reachable')
+          PY
+
+  ros-build:
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ROS build/test dependencies
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y \
+            python3-colcon-common-extensions \
+            python3-numpy \
+            python3-yaml \
+            python3-pytest \
+            ros-humble-gazebo-ros-pkgs \
+            ros-humble-xacro \
+            ros-humble-robot-state-publisher
+
+      - name: colcon build
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ros2_ws
+          colcon build --symlink-install --event-handlers console_direct+
+
+      - name: colcon test (bip_core)
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ros2_ws
+          source install/setup.bash
+          colcon test --packages-select bip_core
+          colcon test-result --verbose

@@ -1,0 +1,18 @@
+services:
+  bip:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: amr-bip:humble
+    container_name: amr-bip
+    network_mode: host
+    ipc: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - ./ros2_ws:/ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    stdin_open: true
+    tty: true
+    command: bash
