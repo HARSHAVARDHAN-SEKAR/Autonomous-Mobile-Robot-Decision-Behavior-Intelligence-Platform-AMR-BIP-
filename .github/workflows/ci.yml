@@ -35,6 +35,8 @@ jobs:
           ! grep -RIn --exclude-dir=.git -E 'dev@exa[m]ple\.com' .
 
       - name: Unit tests (ROS-free core)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/ros2_ws/src/bip_core
         run: pytest ros2_ws/src/bip_core/test -q
 
       - name: Static map/mission consistency
