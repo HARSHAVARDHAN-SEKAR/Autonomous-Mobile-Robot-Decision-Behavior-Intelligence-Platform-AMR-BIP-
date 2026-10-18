@@ -1,135 +1,203 @@
 # Autonomous Mobile Robot Decision & Behavior Intelligence Platform (AMR-BIP)
 
 [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-blue)](https://docs.ros.org/en/humble/)
-[![CI](https://github.com/HARSHAVARDHAN-SEKAR/amr-bip/actions/workflows/ci.yml/badge.svg)](https://github.com/HARSHAVARDHAN-SEKAR/amr-bip/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Simulation](https://img.shields.io/badge/Simulation-Gazebo%20Classic%2011-708090)](https://classic.gazebosim.org/)
+[![CI](https://github.com/HARSHAVARDHAN-SEKAR/Autonomous-Mobile-Robot-Decision-Behavior-Intelligence-Platform-AMR-BIP-/actions/workflows/ci.yml/badge.svg)](https://github.com/HARSHAVARDHAN-SEKAR/Autonomous-Mobile-Robot-Decision-Behavior-Intelligence-Platform-AMR-BIP-/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-AMR-BIP is a ROS 2 research and portfolio platform for studying the **executive
-layer** of an autonomous mobile robot: mission scheduling, behavior selection,
-preemption, recovery, and fault handling.
-
-The same robot, mission set, navigation stack, battery model, and skills API
-are controlled by three alternative decision architectures:
+**AMR-BIP** is a Docker-based ROS 2 research and portfolio platform for investigating how an autonomous mobile robot **selects missions, interrupts work, responds to faults, manages energy and resumes execution**. It implements three interchangeable decision engines over the same simulated robot and navigation stack:
 
 - **Behavior Tree (BT)**
 - **Finite State Machine (FSM)**
 - **Utility-based arbitration**
 
-This keeps the experimental variable at the decision layer instead of changing
-the rest of the autonomy stack between runs.
+The navigation subsystem intentionally does **not** use Nav2: it provides an explicit A* planner, path smoothing, pure-pursuit controller, 2D LiDAR obstacle checks, bounded replanning and a cancellable ROS 2 `GoToPose` action. This makes decision-layer preemption and navigation behavior inspectable.
 
-The navigation subsystem is intentionally **Nav2-free**: A* global planning and
-pure-pursuit control are implemented explicitly and exposed through a
-cancellable ROS 2 action so that executive preemption and recovery behavior are
-easy to inspect.
+> **Validation scope:** The evidence below comes from **Gazebo simulation**, not a physical robot. A successful single run is not a reliability benchmark. The BT/FSM/Utility comparison infrastructure exists, but measured three-engine comparisons have **not** been published.
+
+## Demonstration and measured results
+
+**[Technical report (PDF)](results/2026-10-18_bt_gazebo/AMR_BIP_BT_Validation_Report.pdf)** · **[Methodology and limitations](results/2026-10-18_bt_gazebo/REPORT.md)** · **[Recording guide](docs/AMR_BIP_RECORDING_GUIDE.md)**
+
+| Check | Recorded result | Evidence / limitation |
+|---|---|---|
+| ROS 2 workspace build | **8 packages built** | Local Docker / ROS 2 Humble build |
+| Core tests | **22 passed, 0 failed** | `colcon test --packages-select bip_core` |
+| Static waypoint reachability | **7/7 waypoint pairs reachable** | Offline grid-planning check, **not** a driving test |
+| Previously blocked inspection goal | **SUCCEEDED** in **52.27 s** | Standalone `/go_to_pose` action run; result is separate from the BT trace |
+| Behavior Tree patrol | **Completed** | Present in recorded BT mission history |
+| Behavior Tree room inspection | **Completed** | Present in recorded BT mission history |
+| Automatic low-battery diversion | **Observed** | BT switched to `CHARGE_NAVIGATING` at **24.9%** battery |
+| Docking and charging | **Observed** | Charging began at **16.3%** and reached approximately **80.3%** |
+| Resume interrupted delivery | **Observed** | Returned to `MISSION`, `deliver_package`, **step 2** |
+| Final three-mission `DONE` state | **Not captured** | Last recorded status was delivery still navigating |
+| Comparative BT/FSM/Utility performance | **Not measured** | Requires controlled multi-run benchmarks |
+
+The evidence dataset consists of **880 ROS 2 status messages over 88.47 seconds** from the recorded portion of one BT simulation run. Its first sample is already in the delivery mission: earlier patrol/inspection completion is visible in the `completed` field, rather than captured from the beginning of those missions.
+
+### Battery and behavior evidence
+
+![Simulated battery percentage during BT low-battery recovery](results/2026-10-18_bt_gazebo/figures/battery_profile.png)
+
+*Simulated battery percentage. The robot interrupted delivery, navigated to the dock, charged and resumed the same mission step.*
+
+![Executive state transitions during charging and mission resume](results/2026-10-18_bt_gazebo/figures/executive_state_timeline.png)
+
+![Interrupted and resumed delivery step timeline](results/2026-10-18_bt_gazebo/figures/mission_resume.png)
+
+Reproducible sources: [`bt_status.jsonl`](results/2026-10-18_bt_gazebo/bt_status.jsonl), [`bt_status.csv`](results/2026-10-18_bt_gazebo/bt_status.csv), [`summary.json`](results/2026-10-18_bt_gazebo/summary.json) and [`tools/plot_bt_evidence.py`](tools/plot_bt_evidence.py). The report does not claim an end-to-end delivery success because the published trace stops before that result.
+
+### Recorded video
+
+A genuine Gazebo screen recording is **being prepared**. The documentation includes [terminal-by-terminal recording instructions](docs/AMR_BIP_RECORDING_GUIDE.md). No video is linked until it has been captured and checked against the actual ROS 2 status log.
+
+## Architecture
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ Decision engines (select one)                                │
-│  bt_executive  │  fsm_executive  │  utility_executive       │
-├──────────────────── shared Skills API ───────────────────────┤
-│ navigate · cancel · charge · battery · emergency · status    │
-├──────────────────────────────────────────────────────────────┤
-│ bip_navigation  A* + smoothing + pure pursuit + replanning   │
-│ bip_battery     speed-dependent drain + dock charging         │
-│ bip_chaos       battery / emergency / path-block fault input  │
-├──────────────────────────────────────────────────────────────┤
-│ Gazebo Classic 11 · diff-drive robot · 2D lidar · odometry   │
-├──────────────────────────────────────────────────────────────┤
-│ bip_benchmark   controlled reset/start + CSV/JSON metrics     │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│           Interchangeable mission decision engine          │
+│   BT executive  |  FSM executive  |  Utility executive      │
+├─────────────────────────────────────────────────────────────┤
+│                     Shared skills API                       │
+│     Navigate / Cancel / Battery / Charge / Emergency       │
+├─────────────────────────────────────────────────────────────┤
+│ bip_navigation  A* + smoothing + pure pursuit + replanning │
+│ bip_battery     motion-dependent drain + docking/charging   │
+│ bip_chaos       fault injection and obstacle scenarios      │
+├─────────────────────────────────────────────────────────────┤
+│ Gazebo Classic 11  |  differential drive  |  2D LiDAR/odom │
+├─────────────────────────────────────────────────────────────┤
+│ bip_benchmark   controlled scenarios + metrics capture      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Packages
-
-| Package | Purpose |
+| ROS 2 package | Responsibility |
 |---|---|
-| `bip_core` | ROS-free occupancy grid, A*, BT primitives, FSM, utility arbiter, mission scheduler and mission progress logic |
-| `bip_interfaces` | `GoToPose` action and custom battery/obstacle services |
-| `bip_description` | Robot xacro, Gazebo world, RViz config and simulation bringup |
-| `bip_navigation` | Cancellable `GoToPose` action server with A*, path smoothing, pure pursuit, emergency handling, scan blocking and virtual-map replanning |
-| `bip_battery` | Speed-dependent battery drain and dock-only charging simulation |
-| `bip_executive` | BT, FSM and utility decision engines using the same skills and mission driver |
-| `bip_chaos` | Controlled fault injection for battery, emergency stop and virtual path blocking |
-| `bip_benchmark` | Deterministic benchmark start/reset, fault scheduling, status traces and per-fault recovery metrics |
+| `bip_core` | ROS-independent map/grid search, behavior primitives, FSM, utility arbitration and mission progress |
+| `bip_interfaces` | `GoToPose` action and battery/obstacle services |
+| `bip_description` | Differential-drive robot description, Gazebo world and simulation launch |
+| `bip_navigation` | A* route planning, pure pursuit, scan checks, bounded recovery and goal execution |
+| `bip_battery` | Simulated battery dynamics and charging dock |
+| `bip_executive` | BT, FSM and utility-based mission executives |
+| `bip_chaos` | Configurable emergency and path-blockage disturbances |
+| `bip_benchmark` | Reset protocol, scheduled fault scenarios and status/metric collection |
 
-## Behaviors demonstrated
+### Navigation configuration used for the validated inspection goal
 
-- Priority/deadline-based mission scheduling
-- Mission preemption and resume at the same mission step
-- Low-battery return-to-dock, charging and mission continuation
-- Emergency stop at the navigation layer plus executive hold/resume
-- Virtual path blockage followed by **immediate active-goal replanning**
-- Scan-obstacle wait/replan with bounded retries and clean navigation failure
-- Cancellable ROS 2 actions for executive-driven preemption
-- Controlled BT vs FSM vs Utility experiments with common initial conditions
+After a reproducible wall-blocking failure with the original settings, the experimental planner was configured with **0.30 m map inflation plus a 0.20 m extra planning margin (0.50 m total)**. The scan-based front stop threshold was **not** reduced. The inspection goal subsequently succeeded in Gazebo. This supports the clearance-mismatch hypothesis for that trial, but does not prove general collision-free or repeated-run performance.
 
-## Deterministic benchmark design
+## Quick start — Docker + ROS 2 Humble
 
-For benchmark runs, launch an executive with `wait_for_start:=true`. The
-benchmark runner waits until the executive reports `WAITING_START`, then:
+Commands under **Ubuntu host** run in a normal Linux terminal. Commands under **Inside Docker** must be run after `docker exec -it amr-bip bash`. You cannot source `/ws/install/setup.bash` or use `/ws/src/...` on the Ubuntu host unless you created those paths there yourself.
 
-1. resets the Gazebo world pose using `/reset_world`;
-2. stops battery charging;
-3. restores battery to 100%;
-4. clears all virtual planner obstacles;
-5. clears emergency state;
-6. waits for the configured settling interval; and
-7. releases `/benchmark/start` and starts the experiment clock.
+**Prerequisites:** Docker Engine and Docker Compose, an Ubuntu X11 desktop for the optional Gazebo GUI, and a locally built `amr-bip:humble` image. Full setup and scenarios: [RUN_GUIDE.md](RUN_GUIDE.md).
 
-Fault schedules are therefore measured from the same mission-start event for
-all three executive architectures.
-
-The navigation server also publishes `/nav/events`. A virtual obstacle changes
-the map revision and causes the **currently active goal** to replan immediately;
-this makes the blocked-path benchmark a real behavioral disturbance rather than
-an obstacle that only affects a future goal.
-
-Per-fault JSON records contain fields such as:
-
-```json
-{
-  "id": "block_1",
-  "fault_type": "block",
-  "scheduled_s": 10.0,
-  "injected_s": 10.03,
-  "recovered_s": 10.21,
-  "recovery_time_s": 0.18,
-  "outcome": "replanned"
-}
-```
-
-## Quick start
-
-For the full terminal-by-terminal workflow, smoke tests and benchmark protocol,
-see **[RUN_GUIDE.md](RUN_GUIDE.md)**.
+**Ubuntu host — start the container**
 
 ```bash
-docker build -t amr-bip:humble -f docker/Dockerfile .
-xhost +local:docker
-docker compose up -d
+# Run from the cloned repository root
+cd ~/Downloads/Autonomous-Mobile-Robot-Decision-Behavior-Intelligence-Platform-AMR-BIP-
+docker build -t amr-bip:humble -f docker/Dockerfile .  # first time / after Dockerfile changes
+docker compose up -d --no-build
+xhost +si:localuser:root
+```
 
+**Terminal 1 — build and launch Gazebo server (inside Docker)**
+
+```bash
 docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
 cd /ws
 colcon build --symlink-install
-source install/setup.bash
+source /ws/install/setup.bash
+ros2 launch bip_description sim.launch.py headless:=true
 ```
 
-Then launch in separate container terminals:
+**Terminal 2 — Gazebo GUI (optional, inside a new Docker shell)**
 
 ```bash
-ros2 launch bip_description sim.launch.py
+docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
+export QT_X11_NO_MITSHM=1
+export LIBGL_ALWAYS_SOFTWARE=1
+gzclient --verbose
+```
+
+The separate GUI and software-rendering configuration helped on the tested Ubuntu/AMD graphics setup. Do **not** launch a second `sim.launch.py` instance.
+
+**Terminal 3 — navigation, battery and fault nodes (inside Docker)**
+
+```bash
+docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
 ros2 launch bip_navigation stack.launch.py
+```
+
+**Terminal 4 — reset the simulation (inside Docker, before launching the executive)**
+
+```bash
+docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
+ros2 service call /reset_world std_srvs/srv/Empty '{}'
+ros2 service call /nav/clear_obstacles std_srvs/srv/Trigger '{}'
+ros2 service call /battery/stop_charging std_srvs/srv/Trigger '{}'
+ros2 service call /battery/set bip_interfaces/srv/SetBattery '{level: 100.0}'
+```
+
+**Terminal 5 — launch one executive (inside Docker)**
+
+```bash
+docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
 ros2 launch bip_executive executive.launch.py engine:=bt
 ```
 
-Normal demonstrations start immediately. For controlled benchmarks:
+**Terminal 6 — readable live status (inside Docker)**
 
 ```bash
+docker exec -it amr-bip bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
+python3 /ws/src/bip_benchmark/scripts/bt_live_status_monitor.py
+```
+
+For raw ROS 2 status instead:
+
+```bash
+ros2 topic echo /executive/status --field data
+```
+
+The monitor script must exist in the cloned repository and be mounted at `/ws/src/bip_benchmark/scripts/`. If you stop the executive, `/executive/status` may disappear; this is expected.
+
+## Tests and reproducibility
+
+**Inside Docker:**
+
+```bash
+source /opt/ros/humble/setup.bash
+cd /ws
+colcon build --symlink-install
+source /ws/install/setup.bash
+colcon test --packages-select bip_core
+colcon test-result --verbose
+```
+
+For the recorded local checkout, this returned **22 tests, 0 errors, 0 failures, 0 skipped**. The seven-waypoint offline clearance experiment can be repeated using the planning-clearance experiment kit described in the [technical report](results/2026-10-18_bt_gazebo/REPORT.md). Run tests again after changing the source.
+
+### Controlled decision-engine benchmarks (experimental)
+
+The repository supports a benchmark-oriented workflow: launch an executive with `wait_for_start:=true`, then run the benchmark node to reset the world, restore battery and obstacle state, and start the scenario clock from a common event. Available scenario identifiers include `baseline`, `battery_drop`, `emergency`, `blocked_path` and `full_chaos`.
+
+```bash
+# Inside Docker, after navigation is running
 ros2 launch bip_executive executive.launch.py engine:=bt wait_for_start:=true
 ```
 
-and then in another terminal:
+In a separate sourced Docker terminal:
 
 ```bash
 ros2 run bip_benchmark benchmark_node --ros-args \
@@ -137,57 +205,29 @@ ros2 run bip_benchmark benchmark_node --ros-args \
   -p out_dir:=/ws/results
 ```
 
-Scenarios: `baseline`, `battery_drop`, `emergency`, `blocked_path`, and
-`full_chaos`.
+Start a **fresh executive process for every scenario/engine**. No benchmark ranking or superiority claims are made until BT, FSM and Utility have been measured under the same scenarios across repeated runs.
 
-**Use a fresh executive process for every engine/scenario run.** The benchmark
-resets the shared robot/world subsystems, while a newly launched executive
-provides a fresh mission-progress state.
+## Limitations and planned validation
 
-## Testing
+- The displayed battery is a **simulation model**, not an actual battery measurement.
+- The October 18 BT trace verifies docking, charging and resumed navigation, **not** final delivery completion.
+- One successful isolated inspection action is not proof of robust navigation around all obstacles.
+- Emergency-stop recovery, blocked-path fault injection and repeated-trial reliability still require end-to-end evidence.
+- The ROS 2 control loop has only been validated in simulation; deployment on physical robots requires further collision-safety and system-level testing.
+- Planned extensions to world-state reasoning, risk assessment and explainable arbitration are documented in [ROADMAP.md](ROADMAP.md).
 
-The ROS-free core can be tested without ROS:
+## Project files
 
-```bash
-pytest ros2_ws/src/bip_core/test -q
-```
-
-The current suite contains **14 unit tests** covering A* behavior, inflation,
-BT semantics, FSM hooks, utility hysteresis, scheduling, mission completion,
-retry/skip behavior and mission progress across preemption.
-
-Inside ROS 2:
-
-```bash
-cd /ws
-colcon test --packages-select bip_core
-colcon test-result --verbose
-```
-
-GitHub Actions additionally performs a ROS 2 Humble `colcon build` and a static
-map/mission reachability check.
-
-## Safety and experiment notes
-
-- Final yaw alignment checks cancellation and emergency state continuously;
-  an emergency can no longer be reported as a successful goal.
-- A pose goal is not declared successful if final orientation fails to reach
-  tolerance within the configured yaw-alignment timeout.
-- `/nav/clear_obstacles` and `/chaos/clear_obstacles` prevent virtual obstacles
-  from leaking between experiments.
-- A benchmark run is marked unsuccessful when the mission set terminates with
-  one or more failed/skipped missions.
-
-## Project direction
-
-AMR-BIP currently focuses on **executive architecture comparison**. Planned
-extensions for world-state reasoning, risk assessment, explainable decisions
-and adaptive arbitration are documented in **[ROADMAP.md](ROADMAP.md)**.
+- [Run guide](RUN_GUIDE.md)
+- [Validation and video checklist](VALIDATION_AND_VIDEO.md)
+- [Experiment report](results/2026-10-18_bt_gazebo/REPORT.md)
+- [Technical PDF report](results/2026-10-18_bt_gazebo/AMR_BIP_BT_Validation_Report.pdf)
+- [Recording guide](docs/AMR_BIP_RECORDING_GUIDE.md)
+- [Release notes](RELEASE_NOTES.md)
 
 ## Author
 
-**Harshavardhan Coimbatore Sekar**  
-GitHub: **@HARSHAVARDHAN-SEKAR**
+**Harshavardhan Coimbatore Sekar** · [GitHub](https://github.com/HARSHAVARDHAN-SEKAR)
 
 ## License
 

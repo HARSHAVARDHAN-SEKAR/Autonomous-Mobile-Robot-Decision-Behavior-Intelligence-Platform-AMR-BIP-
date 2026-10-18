@@ -1,0 +1,10 @@
+Isolated GoToPose validation (separate run, Gazebo Classic)
+Goal: x=4.5, y=3.0, yaw=0.0
+Distance feedback: approx. 8.511 m -> 0.173 m
+Result:
+    success: true
+    message: reached
+    total_time: 52.26591110229492
+Goal finished with status: SUCCEEDED
+Source: user's captured ros2 action send_goal terminal log, 2026-10-18.
+This is NOT an endpoint measurement from the BT trace.

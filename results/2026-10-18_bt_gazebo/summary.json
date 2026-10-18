@@ -1,0 +1,148 @@
+{
+  "dataset": "ROS 2 /executive/status std_msgs/String JSON stream, sampled ~10 Hz",
+  "date": "2026-10-18",
+  "engine": "bt",
+  "samples": 880,
+  "duration_s": 88.466,
+  "first_observation": {
+    "engine": "bt",
+    "state": "MISSION",
+    "battery": 35.9,
+    "charging": false,
+    "emergency": false,
+    "nav": "running",
+    "t": 1792330349.0454261,
+    "mission": "deliver_package",
+    "step": 0,
+    "completed": [
+      "patrol_perimeter",
+      "inspect_east_room"
+    ],
+    "failed": []
+  },
+  "last_observation": {
+    "engine": "bt",
+    "state": "MISSION",
+    "battery": 77.3,
+    "charging": false,
+    "emergency": false,
+    "nav": "running",
+    "t": 1792330437.510998,
+    "mission": "deliver_package",
+    "step": 2,
+    "completed": [
+      "patrol_perimeter",
+      "inspect_east_room"
+    ],
+    "failed": []
+  },
+  "observed_completed_missions": [
+    "patrol_perimeter",
+    "inspect_east_room"
+  ],
+  "observed_final_delivery_success": false,
+  "observed_return_to_dock_and_charging": true,
+  "minimum_battery_percent": 16.3,
+  "maximum_battery_percent": 80.3,
+  "state_counts": {
+    "MISSION": 340,
+    "CHARGE_IDLE": 2,
+    "CHARGE_NAVIGATING": 217,
+    "CHARGE_REQUESTING": 2,
+    "CHARGE_CHARGING": 319
+  },
+  "transitions": [
+    {
+      "elapsed_s": 0.0,
+      "state": "MISSION",
+      "mission": "deliver_package",
+      "step": 0,
+      "charging": false,
+      "battery_percent": 35.9
+    },
+    {
+      "elapsed_s": 14.709,
+      "state": "MISSION",
+      "mission": "deliver_package",
+      "step": 1,
+      "charging": false,
+      "battery_percent": 30.2
+    },
+    {
+      "elapsed_s": 16.399,
+      "state": "MISSION",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 30.1
+    },
+    {
+      "elapsed_s": 27.563,
+      "state": "CHARGE_IDLE",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 24.9
+    },
+    {
+      "elapsed_s": 27.762,
+      "state": "CHARGE_NAVIGATING",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 24.9
+    },
+    {
+      "elapsed_s": 49.624,
+      "state": "CHARGE_REQUESTING",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 16.3
+    },
+    {
+      "elapsed_s": 49.827,
+      "state": "CHARGE_CHARGING",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 16.3
+    },
+    {
+      "elapsed_s": 50.233,
+      "state": "CHARGE_CHARGING",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": true,
+      "battery_percent": 17.3
+    },
+    {
+      "elapsed_s": 81.911,
+      "state": "MISSION",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": true,
+      "battery_percent": 80.3
+    },
+    {
+      "elapsed_s": 82.418,
+      "state": "MISSION",
+      "mission": "deliver_package",
+      "step": 2,
+      "charging": false,
+      "battery_percent": 80.2
+    }
+  ],
+  "other_separate_validations": {
+    "inspection_goal": "SUCCEEDED (reached), 52.26591110229492 s",
+    "unit_tests": "22 passed, 0 failures",
+    "static_waypoint_reachability": "7/7 reachable offline"
+  },
+  "limitations": [
+    "No final DONE status in captured log",
+    "No repeated-trial reliability or BT/FSM/Utility comparative benchmark",
+    "Battery percentage is a simulated model",
+    "Standalone action test is distinct from the BT trace",
+    "No video recording included"
+  ]
+}

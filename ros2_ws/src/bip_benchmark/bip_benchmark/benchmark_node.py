@@ -158,7 +158,10 @@ class Benchmark(Node):
         except json.JSONDecodeError:
             return
         t = time.monotonic() - self.t0
-        if event.get('event') == 'replan_succeeded':
+        # Do not count unrelated scan_block retries as recovery from an
+        # injected virtual obstacle. Only map-update replanning qualifies.
+        if (event.get('event') == 'replan_succeeded' and
+                event.get('reason') == 'map_update'):
             rec = self._oldest_pending('block')
             if rec is not None and t >= rec['injected_s']:
                 self._mark_recovered(rec, t, 'replanned')
