@@ -49,7 +49,13 @@ Reproducible sources: [`bt_status.jsonl`](results/2026-10-18_bt_gazebo/bt_status
 
 ### Recorded video
 
-A genuine Gazebo screen recording is **being prepared**. The documentation includes [terminal-by-terminal recording instructions](docs/AMR_BIP_RECORDING_GUIDE.md). No video is linked until it has been captured and checked against the actual ROS 2 status log.
+[Watch the AMR-BIP Gazebo battery-recovery demonstration (MP4)](docs/media/amr_bip_gazebo_demo.mp4)
+
+This recording demonstrates a low-battery test scenario,
+automatic docking, simulated charging to approximately 80%,
+and resumption of the interrupted patrol mission.
+
+The footage does not establish completion of all three missions.
 
 ## Architecture
 
