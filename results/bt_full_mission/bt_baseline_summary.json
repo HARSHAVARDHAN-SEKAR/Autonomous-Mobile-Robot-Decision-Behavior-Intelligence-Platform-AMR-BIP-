@@ -1,0 +1,14 @@
+{
+  "engine": "bt",
+  "scenario": "baseline",
+  "success": true,
+  "termination_reason": "mission_set_finished",
+  "controlled_start": true,
+  "world_reset_before_run": true,
+  "initial_battery_pct": 100.0,
+  "total_time_s": 278.1,
+  "missions_completed": 3,
+  "missions_failed": 0,
+  "state_switches": 5,
+  "fault_recoveries": []
+}
