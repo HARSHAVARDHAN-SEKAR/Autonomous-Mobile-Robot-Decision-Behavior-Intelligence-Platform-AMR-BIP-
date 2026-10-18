@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate verified AMR-BIP BT figures and summary from a ROS2 status log.
+"""Regenerate AMR-BIP BT figures from a recorded ROS 2 status log.
 
 Usage:
   python3 tools/plot_bt_evidence.py \
