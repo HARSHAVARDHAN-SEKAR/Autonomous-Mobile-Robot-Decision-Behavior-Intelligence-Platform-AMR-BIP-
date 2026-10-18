@@ -1,7 +1,7 @@
 # Autonomous Mobile Robot Decision & Behavior Intelligence Platform (AMR-BIP)
 
 [![ROS 2](https://img.shields.io/badge/ROS%202-Humble-blue)](https://docs.ros.org/en/humble/)
-[![CI](https://github.com/HARSHAVARDHAN-SEKAR/amr-bip/actions/workflows/ci.yml/badge.svg)](https://github.com/HARSHAVARDHAN-SEKAR/amr-bip/actions/workflows/ci.yml)
+[![CI](https://github.com/HARSHAVARDHAN-SEKAR/Autonomous-Mobile-Robot-Decision-Behavior-Intelligence-Platform-AMR-BIP-/actions/workflows/ci.yml/badge.svg)](https://github.com/HARSHAVARDHAN-SEKAR/Autonomous-Mobile-Robot-Decision-Behavior-Intelligence-Platform-AMR-BIP-/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 AMR-BIP is a ROS 2 research and portfolio platform for studying the **executive
@@ -40,6 +40,13 @@ easy to inspect.
 └──────────────────────────────────────────────────────────────┘
 ```
 
+## Verified Gazebo Behavior Tree evidence (18 October 2026)
+
+[Technical report (PDF)](results/2026-10-18_bt_gazebo/AMR_BIP_BT_Validation_Report.pdf) | [Detailed report + methodology](results/2026-10-18_bt_gazebo/REPORT.md) | [Battery plot](results/2026-10-18_bt_gazebo/figures/battery_profile.png) | [Executive state timeline](results/2026-10-18_bt_gazebo/figures/executive_state_timeline.png) | [Recording guide](docs/AMR_BIP_RECORDING_GUIDE.md)
+
+In ROS 2 Humble / Gazebo Classic 11, a Behavior Tree run completed patrol and inspection, then interrupted `deliver_package` to navigate autonomously to the charging dock. The robot charged from 16.3% to about 80.3% (simulated battery model) and resumed delivery at the same mission step. A separate `GoToPose` inspection goal completed in 52.27 s; 22 ROS-free core unit tests passed. The captured BT status trace ends **before final delivery completion**. Neither a three-mission success nor comparative BT/FSM/Utility benchmark is claimed. Source JSONL and reproducible plots are committed under `results/2026-10-18_bt_gazebo/`.
+
+
 ## Packages
 
 | Package | Purpose |
@@ -53,7 +60,14 @@ easy to inspect.
 | `bip_chaos` | Controlled fault injection for battery, emergency stop and virtual path blocking |
 | `bip_benchmark` | Deterministic benchmark start/reset, fault scheduling, status traces and per-fault recovery metrics |
 
-## Behaviors demonstrated
+## Implemented behaviors (runtime validation ongoing)
+
+The source code implements the following behaviors. A green CI build and
+ROS-free unit tests do **not** verify that each end-to-end Gazebo scenario
+finishes successfully. In particular, a prior manual run entered low-battery
+dock navigation but did not confirm charging/resume. See
+[VALIDATION_AND_VIDEO.md](VALIDATION_AND_VIDEO.md) for run-specific evidence
+requirements and recording steps.
 
 - Priority/deadline-based mission scheduling
 - Mission preemption and resume at the same mission step
@@ -85,7 +99,8 @@ the map revision and causes the **currently active goal** to replan immediately;
 this makes the blocked-path benchmark a real behavioral disturbance rather than
 an obstacle that only affects a future goal.
 
-Per-fault JSON records contain fields such as:
+The benchmark runner is designed to emit per-fault JSON records with fields
+such as the following **illustrative schema** (not measured output):
 
 ```json
 {
@@ -177,6 +192,18 @@ map/mission reachability check.
   from leaking between experiments.
 - A benchmark run is marked unsuccessful when the mission set terminates with
   one or more failed/skipped missions.
+
+## Evidence status
+
+- Verified previously: GitHub Actions core tests and ROS 2 build on the
+  repository commit audited 2026-10-17; previous local Gazebo robot spawn,
+  navigation startup, robot movement and battery-triggered executive switch.
+- Not yet independently validated: an entire mission set completing in Gazebo,
+  successful dock arrival and charging/resume, controlled 3-engine benchmark
+  comparisons, and all emergency/blockage scenarios.
+- Benchmark JSON/CSV and a genuine Gazebo capture should be attached only
+  after they are produced by successful local runs. No performance superiority
+  is claimed at this stage.
 
 ## Project direction
 
