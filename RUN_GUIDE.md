@@ -194,7 +194,7 @@ colcon test --packages-select bip_core
 colcon test-result --verbose
 ```
 
-Expected: 14 tests pass.
+Expected: 22 core tests pass (validated 18 October 2026).
 
 ---
 
