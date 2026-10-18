@@ -61,6 +61,18 @@ class UtilityArbiter:
         return best
 
 
+def choose_safety_first(arbiter, scores, emergency):
+    """Emergency must preempt utility hysteresis, including a tied 1.0 charge.
+
+    After emergency is released, the normal arbiter may choose again.
+    This helper intentionally lives in ROS-free bip_core for regression tests.
+    """
+    if emergency:
+        arbiter.current = 'emergency_hold'
+        return 'emergency_hold'
+    return arbiter.choose(scores)
+
+
 def battery_urgency(pct, low=25.0, critical=10.0):
     """0 when full -> 1 near critical (piecewise linear)."""
     if pct >= low:

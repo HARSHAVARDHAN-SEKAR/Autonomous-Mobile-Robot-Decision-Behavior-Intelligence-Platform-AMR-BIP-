@@ -17,8 +17,10 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
-from bip_core.decision import UtilityArbiter, battery_urgency, schedule
-from bip_executive.common import (BATTERY_RESUME, BenchmarkStartGate,
+from bip_core.decision import (UtilityArbiter, battery_urgency,
+                               choose_safety_first, schedule)
+from bip_executive.common import (BATTERY_LOW, BATTERY_RESUME,
+                                  BenchmarkStartGate,
                                   MissionProgress, Skills, drive_mission_step,
                                   load_missions)
 
@@ -49,7 +51,9 @@ class UtilityExecutive(Node):
     def scores(self):
         s = self.skills
         charge_score = battery_urgency(s.battery_pct)
-        if self.charge_phase != 'idle':
+        # Match the BT/FSM low-battery trigger. Without this floor, utility
+        # hysteresis can delay an 18% battery-drop fault below the test target.
+        if s.battery_pct < BATTERY_LOW or self.charge_phase != 'idle':
             charge_score = max(charge_score, 0.75)   # latch until done
         return {
             'emergency_hold': 1.0 if s.emergency else 0.0,
@@ -105,7 +109,10 @@ class UtilityExecutive(Node):
             self.skills.publish_status('utility', 'WAITING_START',
                                        self.prog.summary())
             return
-        chosen = self.arbiter.choose(self.scores())
+        # Emergency is a safety constraint, not a utility preference.
+        # Otherwise a current charge score of 1.0 can win a tie via hysteresis.
+        chosen = choose_safety_first(self.arbiter, self.scores(),
+                                     self.skills.emergency)
         if chosen != self.activity:
             # activity switch -> preempt whatever navigation is running
             if self.skills.nav_busy():

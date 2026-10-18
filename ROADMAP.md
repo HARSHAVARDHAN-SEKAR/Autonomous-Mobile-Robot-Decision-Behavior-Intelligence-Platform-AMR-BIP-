@@ -18,6 +18,14 @@ intelligence without replacing the safety-critical deterministic core.
 - [x] Per-fault recovery metrics
 - [x] Docker + GitHub Actions + ROS-free unit tests
 
+## Release validation — separate from implementation
+
+- [ ] Verify BT, FSM and Utility end-to-end in Gazebo after a clean clone
+- [ ] Validate each fault-injection scenario and its JSON/CSV summary
+- [ ] Resolve or document low-battery docking navigation blockage
+- [ ] Publish unedited simulation capture and reproducible run steps
+- [ ] Report controlled comparisons only after collecting actual results
+
 ## v2 — Situation and risk reasoning
 
 - [ ] Robot/world state aggregator

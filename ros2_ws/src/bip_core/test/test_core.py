@@ -3,7 +3,8 @@ import math
 from bip_core.grid import OccupancyGrid, grid_from_config
 from bip_core import astar
 from bip_core.bt import Status, Sequence, Fallback, Condition, Action
-from bip_core.decision import StateMachine, UtilityArbiter, battery_urgency, schedule
+from bip_core.decision import (StateMachine, UtilityArbiter, battery_urgency,
+                               choose_safety_first, schedule)
 
 
 # ---------------------------------------------------------------- grid + A*
@@ -123,6 +124,21 @@ def test_utility_hysteresis():
     assert arb.choose({"mission": 0.5, "charge": 0.55}) == "mission"
     # decisively better -> switch
     assert arb.choose({"mission": 0.5, "charge": 0.9}) == "charge"
+
+
+def test_emergency_overrides_equal_charge_score_and_hysteresis():
+    arbiter = UtilityArbiter(hysteresis=0.08)
+    assert arbiter.choose({'charge': 1.0, 'emergency_hold': 0.0}) == 'charge'
+    # Previously, equal 1.0 scores could keep charging during an emergency.
+    result = choose_safety_first(
+        arbiter, {'charge': 1.0, 'emergency_hold': 1.0}, emergency=True)
+    assert result == 'emergency_hold'
+    assert arbiter.current == 'emergency_hold'
+    # Releasing the emergency must allow normal activity selection.
+    result = choose_safety_first(
+        arbiter, {'charge': 0.75, 'emergency_hold': 0.0, 'mission': 0.55},
+        emergency=False)
+    assert result == 'charge'
 
 
 def test_battery_urgency_monotonic():

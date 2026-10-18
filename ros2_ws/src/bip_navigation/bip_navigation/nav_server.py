@@ -28,6 +28,7 @@ from std_srvs.srv import Trigger
 
 from bip_core import astar
 from bip_core.grid import grid_from_config
+from bip_core.nav_safety import command_for_heading
 from bip_interfaces.action import GoToPose
 from bip_interfaces.srv import AddObstacle
 
@@ -58,12 +59,20 @@ class NavServer(Node):
         self.declare_parameter('obstacle_stop_dist', 0.35)
         self.declare_parameter('block_wait_s', 2.5)
         self.declare_parameter('max_block_retries', 3)
+        self.declare_parameter('turn_in_place_threshold_rad', 0.35)
+        self.declare_parameter('blocked_turn_timeout_s', 3.0)
 
         env_file = self.get_parameter('environment_file').value
         with open(env_file, encoding='utf-8') as f:
             self.env = yaml.safe_load(f)
         self.grid = grid_from_config(self.env)
         self.robot_radius = float(self.env.get('robot_radius', 0.3))
+        self.planning_margin = max(
+            0.0, float(self.env.get('planning_clearance_margin', 0.0)))
+        self.get_logger().info(
+            f'Planning inflation: robot radius {self.robot_radius:.2f} m + '
+            f'margin {self.planning_margin:.2f} m = '
+            f'{self.robot_radius + self.planning_margin:.2f} m')
 
         self.virtual_obstacles = []
         self._map_revision = 0
@@ -158,7 +167,7 @@ class NavServer(Node):
         g = grid_from_config(self.env)
         for (x, y, sx, sy) in obstacles:
             g.add_rect(x, y, sx, sy)
-        return g, g.inflated(self.robot_radius)
+        return g, g.inflated(self.robot_radius + self.planning_margin)
 
     def stop(self):
         self.cmd_pub.publish(Twist())
@@ -184,6 +193,17 @@ class NavServer(Node):
         front = list(s.ranges[mid - sector: mid + sector])
         vals = [r for r in front if s.range_min < r < s.range_max]
         return bool(vals) and min(vals) < stop_d
+
+    def known_map_rotation_clear(self, x, y):
+        """Reject in-place turning if the known inflated occupancy covers base.
+
+        This checks only *mapped* obstacles; a scan alone cannot certify
+        full-footprint clearance from unknown obstacles. Simulation-only aid,
+        not a validated collision-free maneuver for physical hardware.
+        """
+        g, occ = self.occupancy()
+        cx, cy = g.world_to_cell(x, y)
+        return g.in_bounds(cx, cy) and not bool(occ[cy, cx])
 
     def plan_path(self, goal_xy):
         g, occ = self.occupancy()
@@ -260,6 +280,9 @@ class NavServer(Node):
         yaw_timeout = self.get_parameter('yaw_align_timeout_s').value
         block_wait = self.get_parameter('block_wait_s').value
         max_retries = int(self.get_parameter('max_block_retries').value)
+        turn_threshold = float(
+            self.get_parameter('turn_in_place_threshold_rad').value)
+        turn_timeout = float(self.get_parameter('blocked_turn_timeout_s').value)
 
         while self.pose is None:
             if not rclpy.ok():
@@ -278,6 +301,7 @@ class NavServer(Node):
                            map_revision=plan_revision)
 
         block_retries = 0
+        blocked_turn_since = None
         idx = 0
         while rclpy.ok():
             if goal_handle.is_cancel_requested:
@@ -336,8 +360,41 @@ class NavServer(Node):
                     return self._fail(goal_handle, 'yaw_timeout', t0)
                 return self._succeed(goal_handle, t0)
 
-            # ---- blocking obstacle handling: wait -> replan -> abort
-            if self.front_blocked():
+            # Choose the next lookahead waypoint BEFORE deciding if turning
+            # can help. The old front-block check unconditionally stopped the
+            # base, making escape turns impossible near wall ends.
+            while idx < len(path) - 1 and \
+                    math.hypot(path[idx][0] - x, path[idx][1] - y) < lookahead:
+                idx += 1
+            tx, ty = path[idx]
+            heading = math.atan2(ty - y, tx - x)
+            err = ang_norm(heading - yaw)
+            blocked = self.front_blocked()
+
+            # Only rotate with zero forward velocity when a substantial
+            # heading error exists AND known inflated-map clearance permits a
+            # turn. A time limit prevents endlessly spinning at a blockage.
+            can_turn = self.known_map_rotation_clear(x, y) if blocked else True
+            linear, angular = command_for_heading(
+                heading_error=err, distance_remaining=dist_goal,
+                max_lin=max_lin, max_ang=max_ang,
+                front_blocked=blocked, allow_turn=can_turn,
+                turn_threshold=turn_threshold)
+
+            if blocked:
+                if angular != 0.0:
+                    if blocked_turn_since is None:
+                        blocked_turn_since = time.monotonic()
+                    if time.monotonic() - blocked_turn_since < turn_timeout:
+                        tw = Twist()
+                        tw.linear.x = 0.0
+                        tw.angular.z = angular
+                        self.cmd_pub.publish(tw)
+                        time.sleep(rate_dt)
+                        continue
+
+                # Either the heading is aligned, the turn is unsafe, or
+                # turning timed out. Stop, wait, replan, then fail boundedly.
                 self.stop()
                 waited = 0.0
                 while waited < block_wait and self.front_blocked():
@@ -352,7 +409,7 @@ class NavServer(Node):
                     block_retries += 1
                     if block_retries > max_retries:
                         return self._fail(goal_handle, 'blocked', t0)
-                    # Register what we see as a small virtual obstacle and replan.
+                    # Mark the detected direction for this simulated map.
                     bx = x + 0.5 * math.cos(yaw)
                     by = y + 0.5 * math.sin(yaw)
                     with self.lock:
@@ -366,23 +423,13 @@ class NavServer(Node):
                     self.publish_event('replan_succeeded', reason='scan_block',
                                        retry=block_retries,
                                        map_revision=plan_revision)
+                blocked_turn_since = None
                 continue
 
-            # ---- pure pursuit: find lookahead point on remaining path
-            while idx < len(path) - 1 and \
-                    math.hypot(path[idx][0] - x, path[idx][1] - y) < lookahead:
-                idx += 1
-            tx, ty = path[idx]
-            heading = math.atan2(ty - y, tx - x)
-            err = ang_norm(heading - yaw)
-
+            blocked_turn_since = None
             tw = Twist()
-            if abs(err) > 0.9:
-                tw.linear.x = 0.0                      # rotate in place
-            else:
-                slow = min(1.0, dist_goal / 0.6)
-                tw.linear.x = max_lin * slow * (1.0 - 0.6 * abs(err) / 0.9)
-            tw.angular.z = max(-max_ang, min(max_ang, 1.8 * err))
+            tw.linear.x = linear
+            tw.angular.z = angular
             self.cmd_pub.publish(tw)
             time.sleep(rate_dt)
 
